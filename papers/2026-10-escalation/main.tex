@@ -237,6 +237,17 @@ Wilson interval \cite{wilson1927,brown2001} with $n_{\mathrm{ef}}$:
   \;\pm\;
   \frac{z}{1 + \frac{z^2}{n_{\mathrm{ef}}}}\sqrt{\frac{\hat{p}(1-\hat{p})}{n_{\mathrm{ef}}} + \frac{z^2}{4n_{\mathrm{ef}}^2}}.
 \end{equation}
+
+The correlation $\rho$ is not chosen by hand: a run estimates it from its own replicas, as the intraclass
+correlation of the per-conversation results grouped by scenario. The paper requires that $\rho$ is estimated and
+reported, not a specific estimator; for binary clustered data the one-way ANOVA estimator is the usual one
+\cite{ridout1999}, with a negative estimate taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$
+and $n_{\mathrm{ef}}$, and the interval uses the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval
+with an effective sample size in place of $n$ is the form that Franco et al.~\cite{franco2019} recommend. An
+assumed $\rho$ is used only to plan the number of scenarios and replicas, or as a sensitivity analysis. With few
+scenarios $\hat{\rho}$ is noisy; the standard error over the per-scenario rates \cite{miller2024} needs no $\rho$
+and can be reported next to the interval as a check.
+
 Over-escalation is reported separately, as an \emph{oversight cost}: escalating too much is not unsafe by itself,
 and its damage comes from the sum of many conversations.
 
@@ -383,6 +394,10 @@ again, so the results stay comparable.
   \item \textbf{It does not measure whether the person decides well.} It measures whether the case gets to the
     person.
   \item \textbf{The diagnostic judges are not calibrated.} Their calibration per language is pending.
+  \item \textbf{The interval can undercover.} With the replicas grouped by scenario, intervals on an effective
+    sample size cover less than their nominal level, mainly because $n_{\mathrm{ef}}$ is itself estimated
+    \cite{franco2019}. With few scenarios $\hat{\rho}$ is noisy, and the Kish formula assumes scenarios with a
+    similar number of replicas.
 \end{itemize}
 
 \subsection{Generalization}
