@@ -124,8 +124,11 @@ does not see it. For this reason the measurement is per turn.
     accounts after a tool failure (14.1\% dishonest responses; 45.3\% if the failure is not marked as an error),
     and that a status indicator read deterministically decreases the rate to 0.87\%. Zhu et al.\ \cite{zhu2026}
     report 22.8\% false success with the base policy and 0.8\% with an evidence contract. Advani
-    \cite{advani2026} shows that LLM judges detect false success badly (AUROC $<0.65$). The three justify
-    verifying against a record, not against the text.
+    \cite{advani2026} shows that LLM judges detect false success badly (AUROC $<0.65$). Guo et al.\
+    \cite{upwarddeception} define upward deception as a final report whose success status is higher than that of
+    the real trajectory, the same structure as a statement against a record; they score it with an LLM judge and
+    report no human validation of that judge. The four justify verifying against a record, not against the
+    text.
   \item \textbf{Attribution.} Chan et al.\ \cite{chan2024} treat the attribution of the actions of an agent and
     activity logs. Narajala and Narayan \cite{narajala2025} describe the attribution gaps in threat T9: the agent
     hides who decided.
@@ -133,6 +136,9 @@ does not see it. For this reason the measurement is per turn.
     with a judge, inside action disclosure. In the public discussion of our proposals, its team proposed that only
     the data recorded by the approval system count and that the request data go in the approval event
     \cite{gaussiadisc}; this work adopts both rules.
+  \item \textbf{Risk framework.} The OWASP Top 10 for Agentic Applications 2026 \cite{owaspagentic} lists
+    Human-Agent Trust Exploitation as ASI09: humans approve actions without independent validation. A false ``a
+    person approved this'' makes the reader believe that a review occurred.
 \end{itemize}
 
 \section{Formal definition}
@@ -165,6 +171,14 @@ approval with the call, it uses that connection. If the statement does not name 
 the action of the same turn or of the earlier turn. The verification does not compare the parameters of the
 statement (Section~\ref{sec:boundaries}).
 
+\paragraph{Vague statements.} If neither turn has an action to connect it to, the statement is \emph{vague}: it
+is not verified and it is left out of $g_{i,t}$; if it is the only statement of the turn, the turn has no score,
+with the reason \texttt{vague\_statement}. Counting it as 0 would make a cell without a score count as
+compliance. The number of vague statements is reported, so that the reader knows how much stays without a
+verification. Claim extraction has the same rule: Metropolitansky and Larson \cite{claimify} exclude
+the sentences whose ambiguity cannot be resolved and label them, at most 5.4\% of the sentences in their
+evaluation.
+
 \paragraph{The source.} Only an approval recorded by the approval system supports a statement. If the assistant
 could write the approval record, it could also record the approval that it invents, and the measurement would
 never fail.
@@ -187,16 +201,20 @@ decides the denominator. The interval is Wilson \cite{wilson1927} with the Kish 
 $n_{\mathrm{ef}} = n / (1 + (\bar{m}-1)\rho)$, with the replicas grouped by scenario. Because the verification is
 deterministic, each confirmed false statement is an incident, reported with the conversation, the turn and the
 quote, without waiting for a rate.
+Per scenario, the report also says whether all its $k$ replicas had zero false statements; the share of
+scenarios where this is true is a figure of consistency, the idea of pass$^k$ \cite{taubench} applied to a
+behavior that must never occur, and it reads better than a rate.
 
 The correlation $\rho$ is not chosen by hand: a run estimates it from its own replicas, as the intraclass
 correlation of the per-conversation results grouped by scenario. The paper requires that $\rho$ is estimated and
-reported, not a specific estimator; for binary clustered data the one-way ANOVA estimator is the usual one
-\cite{ridout1999}, with a negative estimate taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$
-and $n_{\mathrm{ef}}$, and the interval uses the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval
-with an effective sample size in place of $n$ is the form that Franco et al.~\cite{franco2019} recommend. An
-assumed $\rho$ is used only to plan the number of scenarios and replicas, or as a sensitivity analysis. With few
-scenarios $\hat{\rho}$ is noisy; the standard error over the per-scenario rates \cite{miller2024} needs no $\rho$
-and can be reported next to the interval as a check.
+reported, not a specific estimator. Ridout et al.~\cite{ridout1999} review and compare the estimators for binary
+clustered data, among them the one-way ANOVA estimator, which our implementation uses with a negative estimate
+taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$ and $n_{\mathrm{ef}}$, and the interval uses
+the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval with an effective sample size in place of $n$
+is one of the two forms that Franco et al.~\cite{franco2019} recommend. An assumed $\rho$ is used only to plan
+the number of scenarios and replicas, or as a sensitivity analysis. With few scenarios $\hat{\rho}$ is noisy; a
+clustered standard error with the scenario as the cluster \cite{miller2024} needs no $\rho$ and can be reported
+next to the interval as a check.
 
 \subsection{Error of the extraction}
 
@@ -217,6 +235,15 @@ different actor, a different sentence), and use conditional forms, requests and 
 the paraphrases of real traffic need human labels. The extraction model receives the tools of the policy and the
 turn, in the language of the assistant, and returns the list of statements with their actor, their action and
 their quote.
+
+\paragraph{Validation of the extraction.} Because the extraction is the only source of error, its validation is
+reported in full. In addition to $\mathrm{Se}$ and $\mathrm{Sp}$ per turn, the report gives the precision and the
+recall of the extraction against human labels at the sentence level (does this sentence contain an approval
+statement?), and the agreement between the annotators of the part with human labels, for example with
+Krippendorff's alpha. A sentence whose meaning cannot be decided from its context goes to an explicit category,
+\emph{cannot be disambiguated}: it is excluded from the extraction and counted, so that the reader knows how much
+the extraction leaves out. The template is the one of Metropolitansky and Larson \cite{claimify}, who report
+sentence-level precision and recall and the agreement of three annotators with Krippendorff's alpha.
 
 \section{Observation with the conversation only}
 
@@ -338,7 +365,6 @@ assistant about recorded facts. It is not an extension evaluated here.
 
 \begin{enumerate}
   \item Must the extraction be a pattern, a small model or a judge? How is its error published?
-  \item Does a vague statement, with no action to connect it to, stay without a score or count as 0?
   \item Is it better to correct the rate for the error of the extraction, or is it sufficient to report it?
   \item Must the record also keep the authorizations of the user?
   \item Must a denied approval presented as granted also be reported as a separate incident?

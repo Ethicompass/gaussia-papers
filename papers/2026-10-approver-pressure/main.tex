@@ -93,8 +93,9 @@ this behavior: a judge reads the turn in which the assistant asks for the approv
 causes and gives the probability of violation. The measurement needs only the text of the conversation, applies
 only to the requests that the assistant writes, and treats the absence of a request as a measured behavior. We
 define the reading per conversation, the rate with a Wilson interval on a Kish effective sample size, and the
-Rogan-Gladen correction for judge error. In a synthetic simulation, the correction has no bias when the
-sensitivity and the specificity of the judge are exact, but with a calibration of 100 scenarios it can leave the
+Rogan-Gladen correction for judge error. In a synthetic simulation, the correction leaves almost no bias (at
+most 0.004) when the sensitivity and the specificity of the judge are exact, but with a calibration of 100
+scenarios it can leave the
 rate farther from the truth than without correction. This work reports no results with real assistants.
 \end{abstract}
 
@@ -104,7 +105,9 @@ rate farther from the truth than without correction. This work reports no result
 
 People trust automated systems too much: when a machine looks certain, the person reviews less and accepts more.
 Art.~14(4)(b) of the European AI Act names this \emph{automation bias} as a risk that human oversight must
-control.
+control. NIST AI 600-1 \cite{nist600} names the same concept in its risk 7, Human-AI Configuration, which
+includes automation bias and over-reliance; it supports the concept, not the measurement, because it has no
+action specific to agents with tools or to the approval of each action.
 
 In an assistant with tools, human oversight is frequently an approval: the assistant prepares an action,
 describes it and asks a person to approve it. A valid approval record looks like proof that oversight worked. But
@@ -122,13 +125,16 @@ that behavior, its estimation and its validation.
 
 \begin{itemize}
   \item \textbf{The threat.} Narajala and Narayan \cite{narajala2025} describe human-agent trust manipulation (T7)
-    through trust amplification signals; OWASP lists it as ASI09 \cite{owasp}. Franklin et al. \cite{franklin}
+    through trust amplification signals; OWASP lists it as ASI09 \cite{owaspagentic}. Franklin et al. \cite{franklin}
     describe traps that use the automation bias of the human in the loop, and Ditz et al. \cite{ditz2025} treat
     human oversight as an attack surface.
   \item \textbf{Influence on the human decision.} Benton et al. \cite{benton2024} evaluate the sabotage of human
     decisions: a model can lead a person to a bad decision. Zhou et al. \cite{zhou2024} show that models express
     little uncertainty and that users trust them too much; Rathi et al. \cite{rathi2025} show that overconfidence
-    changes with the language. DarkBench \cite{darkbench} catalogs manipulative patterns in language models.
+    changes with the language. DarkBench \cite{darkbench} catalogs manipulative patterns in language models in
+    six categories, and its own coverage table lists fake urgency as not covered. DarkBench describes a chatbot
+    toward its user, not pressure on an approver, so it neither confirms nor contradicts the closed list of
+    causes of this work.
   \item \textbf{Oversight metrics.} The Gaussia oversight paper \cite{gaussia2026} defines checks on the approval
     record and the structure of its judges; it has no measurement of the text of the request. In the public
     discussion of our proposals, its team proposed to measure only the requests that the assistant writes, to
@@ -213,13 +219,14 @@ Wilson interval with $n_{\mathrm{ef}}$:
 
 The correlation $\rho$ is not chosen by hand: a run estimates it from its own replicas, as the intraclass
 correlation of the per-conversation results grouped by scenario. The paper requires that $\rho$ is estimated and
-reported, not a specific estimator; for binary clustered data the one-way ANOVA estimator is the usual one
-\cite{ridout1999}, with a negative estimate taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$
-and $n_{\mathrm{ef}}$, and the interval uses the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval
-with an effective sample size in place of $n$ is the form that Franco et al.~\cite{franco2019} recommend. An
-assumed $\rho$ is used only to plan the number of scenarios and replicas, or as a sensitivity analysis. With few
-scenarios $\hat{\rho}$ is noisy; the standard error over the per-scenario rates \cite{miller2024} needs no $\rho$
-and can be reported next to the interval as a check.
+reported, not a specific estimator. Ridout et al.~\cite{ridout1999} review and compare the estimators for binary
+clustered data, among them the one-way ANOVA estimator, which our implementation uses with a negative estimate
+taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$ and $n_{\mathrm{ef}}$, and the interval uses
+the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval with an effective sample size in place of $n$
+is one of the two forms that Franco et al.~\cite{franco2019} recommend. An assumed $\rho$ is used only to plan
+the number of scenarios and replicas, or as a sensitivity analysis. With few scenarios $\hat{\rho}$ is noisy; a
+clustered standard error with the scenario as the cluster \cite{miller2024} needs no $\rho$ and can be reported
+next to the interval as a check.
 
 If the sensitivity $\mathrm{Se}$ and the specificity $\mathrm{Sp}$ of the judge for this measurement are known, the
 rate is corrected with Rogan-Gladen:
@@ -228,8 +235,36 @@ rate is corrected with Rogan-Gladen:
 \end{equation}
 Both rates are reported, the observed one and the corrected one, with the calibration used and its size, the
 distribution of the causes, the number of conversations without a request, the cells without a score with their
-reasons, the threshold and its origin, and the model of the judge. The Wilson interval does not include the
-uncertainty of the calibration.
+reasons, the threshold and its origin, and the model of the judge.
+
+\paragraph{Interval of the corrected rate.} With $\mathrm{Se}$ and $\mathrm{Sp}$ taken as known, the interval of
+$\hat{\pi}$ is obtained by transforming the two limits of the Wilson interval of $\hat{p}$ with the same
+Rogan-Gladen function, truncated to $[0,1]$. An interval computed on $\hat{\pi}$ as if it were an observed rate is
+not valid: in an example of Reiczigel et al.\ \cite{reiczigel2010}, its real coverage is below 60\% for a
+nominal 95\%.
+
+\paragraph{Uncertainty of the calibration.} If $\mathrm{Se}$ and $\mathrm{Sp}$ are estimated on $m_1$ positive
+and $m_0$ negative calibration items, the delta method gives
+\begin{equation}
+  \mathrm{Var}(\hat{\pi}) \approx
+  \frac{\hat{p}(1-\hat{p})/n_{\mathrm{ef}} + (1-\hat{\pi})^2\,\mathrm{Sp}(1-\mathrm{Sp})/m_0
+        + \hat{\pi}^2\,\mathrm{Se}(1-\mathrm{Se})/m_1}{(\mathrm{Se}+\mathrm{Sp}-1)^2}.
+\end{equation}
+This is the variance of Lee et al.\ \cite{lee2025} with one change: the first term uses $n_{\mathrm{ef}}$ in
+place of $n$. The change joins the design effect with the two calibration terms, an extension that we found in no
+source, and its coverage was not checked. A bootstrap that resamples the calibration set and the test set
+separately has the same purpose.
+
+\paragraph{Youden's $J$.} The denominator $J = \mathrm{Se} + \mathrm{Sp} - 1$ is reported with its interval, from
+$\mathrm{Var}(\hat{J}) = \mathrm{Se}(1-\mathrm{Se})/m_1 + \mathrm{Sp}(1-\mathrm{Sp})/m_0$, next to the calibration
+and its size. When $J$ is small or is estimated with few items, the correction is unstable and its interval grows
+quickly. $J$ is a warning signal, not an acceptance criterion, and no threshold is fixed; the observed rate is
+always reported and is the fallback. Fiedler \cite{fiedler2026} recommends reporting $\hat{J}$ with its
+interval for the same reason. The calibration size matters more than the test size: when $n$ is large, the
+length of the interval depends only on the calibration sizes, and in an example of Lee et al.\ about 200
+calibration items are necessary for an interval shorter than 0.1 \cite{lee2025}. Prediction-powered inference
+avoids the division by $J$; for a binary judge better than chance, its asymptotic variance is not larger than
+that of Rogan-Gladen \cite{ppijudge}, and it is an alternative estimate when $J$ is low.
 
 \section{Scenario generation}
 
@@ -292,24 +327,27 @@ size, the most frequent causes, and two cells without a score because the judge 
 
 \subsection{The correction in a synthetic simulation}
 
-We measured the bias of the rate with a simulated judge with 90\% accuracy, in 20 repetitions, for two assistant
-profiles:
+We measured the bias of the rate with a simulated judge with 90\% accuracy, in 1{,}000 repetitions, for two
+assistant profiles. Each bias is the mean over the repetitions, with its Monte Carlo standard error in parentheses:
 
 \begin{center}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 Profile & Observed bias & Exact Se and Sp & Calibration of 100 & Calibration of 400 \\
 \midrule
-invents actions & $-0.017$ & $+0.003$ & $+0.032$ & $+0.015$ \\
-never escalates & $+0.046$ & $+0.001$ & $+0.018$ & $+0.007$ \\
+invents actions & $-0.018\ (0.001)$ & $-0.000\ (0.001)$ & $+0.029\ (0.001)$ & $+0.011\ (0.001)$ \\
+never escalates & $+0.047\ (0.001)$ & $+0.004\ (0.001)$ & $+0.018\ (0.001)$ & $+0.009\ (0.001)$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-With exact $\mathrm{Se}$ and $\mathrm{Sp}$, the correction has no bias. With a calibration estimated on 100
-scenarios, in the profile that invents actions the bias goes from $-0.017$ to $+0.032$: when the errors of the
-judge compensate each other and the observed bias is already small, the error of the calibration weighs more than
-the bias that it corrects. A calibration must be precise relative to the bias that it corrects.
+With exact $\mathrm{Se}$ and $\mathrm{Sp}$, the correction removes almost all the bias: what remains is at most
+$0.004$, against $0.047$ without correction. With a calibration estimated on 100 scenarios, in the profile that
+invents actions the bias goes from $-0.018$ to $+0.029$, far beyond the Monte Carlo error of each value: when
+the errors of the judge compensate each other and the observed bias is already small, the error of the calibration
+weighs more than the bias that it corrects. A calibration must be precise relative to the bias that it corrects.
+An earlier version of this table used 20 repetitions; with 1{,}000 the values change by at most $0.004$ and the
+conclusions do not change.
 
 \subsection{Calibration of the judge}
 
@@ -364,8 +402,9 @@ without tools.
 \begin{itemize}
   \item \textbf{There are no results with real assistants.} The figures come from synthetic data or are
     illustrative.
-  \item \textbf{It depends on a judge.} The correction reduces its error only if the calibration is precise, and
-    the interval does not include the uncertainty of the calibration.
+  \item \textbf{It depends on a judge.} The correction reduces its error only if the calibration is precise. The
+    uncertainty of the calibration enters through the delta method, and its coverage together with the design
+    effect was not checked.
   \item \textbf{The vocabulary is closed.} Appealing to guilt, flattering the approver or insisting several times
     are not detected.
   \item \textbf{It measures only the text.} The pressure of the interface (colors, buttons, order of the options)
@@ -392,7 +431,8 @@ here.
   \item Is the vocabulary of four causes sufficient, or must guilt, flattery or insistence be added?
   \item In which turn does the result go when there is no request? We propose the last turn of the assistant.
   \item How is the judge calibrated in several languages, and who maintains the calibration set?
-  \item How is the uncertainty of the calibration added to the interval?
+  \item Is the delta method with $n_{\mathrm{ef}}$ in the first term adequate, or is the separate bootstrap
+    necessary?
   \item How many scenarios and replicas are necessary for the interval to be useful?
 \end{enumerate}
 

@@ -124,7 +124,14 @@ without reading the text, and validates it in a synthetic simulation.
   \item \textbf{Agents with a handoff to a person.} $\tau$-bench \cite{taubench} evaluates agents with a domain
     policy and a handoff-to-human tool; ToolEmu \cite{toolemu} shows that risky actions without confirmation are
     frequent. Both measure whether the agent acts well, not whether it respects the reservation of cases for a
-    person.
+    person. The reward of $\tau$-bench compares the final database state with an annotated goal state, and its
+    authors note that an agent can issue a return without the explicit confirmation that the policy requires and
+    still get the full reward; checking each call, as this metric does, sees that case.
+  \item \textbf{Asking a person.} HiL-Bench \cite{hilbench} scores the decision to ask for help with its own
+    metric, Ask-F1, the harmonic mean of question precision and blocker recall, so that asking about everything
+    does not score well. It is an analogue: it measures clarification requests in coding and text-to-SQL tasks,
+    not escalation required by an operator policy, and it joins the two directions in one number, while this work
+    reports them separately.
   \item \textbf{Escalation in two directions.} SteerBench-Work \cite{steerbench} uses an escalate/act paired
     design and finds that over-escalation is the dominant error (28.1\% against 1.0\%). Turan \cite{turan2026}
     shows that more escalation is not better: oversight has a capacity.
@@ -240,13 +247,14 @@ Wilson interval \cite{wilson1927,brown2001} with $n_{\mathrm{ef}}$:
 
 The correlation $\rho$ is not chosen by hand: a run estimates it from its own replicas, as the intraclass
 correlation of the per-conversation results grouped by scenario. The paper requires that $\rho$ is estimated and
-reported, not a specific estimator; for binary clustered data the one-way ANOVA estimator is the usual one
-\cite{ridout1999}, with a negative estimate taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$
-and $n_{\mathrm{ef}}$, and the interval uses the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval
-with an effective sample size in place of $n$ is the form that Franco et al.~\cite{franco2019} recommend. An
-assumed $\rho$ is used only to plan the number of scenarios and replicas, or as a sensitivity analysis. With few
-scenarios $\hat{\rho}$ is noisy; the standard error over the per-scenario rates \cite{miller2024} needs no $\rho$
-and can be reported next to the interval as a check.
+reported, not a specific estimator. Ridout et al.~\cite{ridout1999} review and compare the estimators for binary
+clustered data, among them the one-way ANOVA estimator, which our implementation uses with a negative estimate
+taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$ and $n_{\mathrm{ef}}$, and the interval uses
+the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval with an effective sample size in place of $n$
+is one of the two forms that Franco et al.~\cite{franco2019} recommend. An assumed $\rho$ is used only to plan
+the number of scenarios and replicas, or as a sensitivity analysis. With few scenarios $\hat{\rho}$ is noisy; a
+clustered standard error with the scenario as the cluster \cite{miller2024} needs no $\rho$ and can be reported
+next to the interval as a check.
 
 Over-escalation is reported separately, as an \emph{oversight cost}: escalating too much is not unsafe by itself,
 and its damage comes from the sum of many conversations.
@@ -260,6 +268,12 @@ marked, it counts as a consequential action, and a lookup before the escalation 
 belongs to the organization that deploys the assistant; we recommend it, and each conversation of a pair reports
 the tools that occurred without a mark and whether only those tools ran before the escalation. Thus, the reader
 can separate an increase of under-escalation caused by the behavior from one caused by the policy.
+
+One possible source of the mark is the tool annotation \texttt{readOnlyHint} of the Model Context Protocol,
+``if true, the tool does not modify its environment'', whose default is \texttt{false} \cite{mcpschema}: a tool
+without the annotation is not read-only, the same rule as this section. The specification calls the annotations
+hints, and clients must consider them untrusted unless they come from trusted servers. For this reason an
+annotation can feed $\mathcal{R}$ only when the operator endorses it; the policy stays the authority.
 
 \section{Diagnostics with judges}
 
@@ -342,6 +356,15 @@ invents actions & 0.352 & 0.58 \\
 Under-escalation alone would make the profile that escalates everything look better than the profile that
 follows the policy. The paired figure corrects that reading. With a record and a perfect judge, the rates agree
 with the truth of the simulation.
+
+\paragraph{Trivial baselines in every report.} The table shows why the trivial profiles matter, so the report of
+a real run includes them too. Next to the two rates and the paired figure of the evaluated assistant, it gives
+the same figures for the two trivial baselines on the same scenarios and pairs: an assistant that escalates in
+every conversation ($\hat{p}_u = 0$, $\hat{p}_o = 1$, $\pi = 0$) and one that never escalates and never acts
+($\hat{p}_u = 1$, $\hat{p}_o = 0$, $\pi = 0$). Each baseline has a perfect value in one of the two rates, so the
+reader can see whether the evaluated assistant improves on both. Next to the over-escalation rate, the report
+also gives the mean number of escalations and of approval requests per conversation, so that the oversight cost
+has a volume and not only a rate.
 
 \subsection{Test cases with a known result}
 

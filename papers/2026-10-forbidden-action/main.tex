@@ -130,8 +130,13 @@ synthetic simulation.
   \item \textbf{Risky actions of agents.} ToolEmu \cite{toolemu} shows that agents with tools execute risky
     actions: the safest agent that they evaluated fails 23.9\% of the time. This justifies measuring the
     execution, not only the text.
-  \item \textbf{Risk framework.} The OWASP Top 10 for agentic applications \cite{owasp2026} describes the risk
-    context of assistants with tools.
+  \item \textbf{Policy compliance of web agents.} ST-WebAgentBench \cite{stwebagentbench} detects policy
+    violations with rule-based evaluation functions on the trajectory, without an LLM judge, which is the same
+    decision as this work. Its User Consent dimension, confirmation before irreversible operations, is an
+    analogue of an operator policy, not the same thing, and its approver is simulated.
+  \item \textbf{Risk framework.} The OWASP Top 10 for Agentic Applications 2026 \cite{owaspagentic} describes the
+    risk context of assistants with tools. The closest entry to an executed forbidden tool is ASI02, Tool Misuse
+    and Exploitation, in which the agent applies a legitimate tool in an unsafe or unintended way.
   \item \textbf{Estimation.} We use the Wilson interval \cite{wilson1927,brown2001}, suitable for rates near 0
     and small $n$, and the Kish design effect \cite{kish1965} for correlated replicas.
 \end{itemize}
@@ -189,13 +194,20 @@ Wilson interval is calculated with $n_{\mathrm{ef}}$:
 
 The correlation $\rho$ is not chosen by hand: a run estimates it from its own replicas, as the intraclass
 correlation of the per-conversation results grouped by scenario. The paper requires that $\rho$ is estimated and
-reported, not a specific estimator; for binary clustered data the one-way ANOVA estimator is the usual one
-\cite{ridout1999}, with a negative estimate taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$
-and $n_{\mathrm{ef}}$, and the interval uses the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval
-with an effective sample size in place of $n$ is the form that Franco et al.~\cite{franco2019} recommend. An
-assumed $\rho$ is used only to plan the number of scenarios and replicas, or as a sensitivity analysis. With few
-scenarios $\hat{\rho}$ is noisy; the standard error over the per-scenario rates \cite{miller2024} needs no $\rho$
-and can be reported next to the interval as a check.
+reported, not a specific estimator. Ridout et al.~\cite{ridout1999} review and compare the estimators for binary
+clustered data, among them the one-way ANOVA estimator, which our implementation uses with a negative estimate
+taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$ and $n_{\mathrm{ef}}$, and the interval uses
+the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval with an effective sample size in place of $n$
+is one of the two forms that Franco et al.~\cite{franco2019} recommend. An assumed $\rho$ is used only to plan
+the number of scenarios and replicas, or as a sensitivity analysis. With few scenarios $\hat{\rho}$ is noisy; a
+clustered standard error with the scenario as the cluster \cite{miller2024} needs no $\rho$ and can be reported
+next to the interval as a check.
+
+\paragraph{Joint figure with the task.} An assistant that does nothing has a rate of 0. Where the scenario
+defines when the task is complete, the report adds the share of conversations in which the task is completed and
+no forbidden action is executed, over the same $n$ conversations. The rate $\hat{p}$ does not change; the joint
+figure only shows whether a low rate comes from caution or from inaction. ST-WebAgentBench uses the same joint
+figure as its headline metric, Completion Under Policy \cite{stwebagentbench}.
 
 \subsection{Incidents}
 
@@ -206,6 +218,13 @@ In addition to the rate, the measurement publishes the incident count
 that is, each forbidden execution confirmed with the record. A rate of 1\% can be acceptable for other failures;
 for an action that must never occur, each case is important. Each incident has the conversation, the turn and the
 call as evidence, and the incidents are grouped by type and scenario for the review.
+
+The rate and the incident count are also reported per tool, or per category when the policy groups its tools,
+as ST-WebAgentBench does with its risk ratio per policy dimension \cite{stwebagentbench}: one total hides
+whether all the failures come from one tool.
+Per scenario, the report also says whether all its $k$ replicas had zero forbidden executions; the share of
+scenarios where this is true is a figure of consistency, the idea of pass$^k$ \cite{taubench} applied to a
+behavior that must never occur, and it reads better than a rate.
 
 \section{Reading without a record}
 

@@ -121,6 +121,11 @@ could not verify.
   \item \textbf{The attack.} \emph{Loopjacking} \cite{loopjacking} describes substitution as a variant of attack
     on human oversight. Ditz et al. \cite{ditz2025} treat human oversight as an attack surface; Meinke et al.
     \cite{meinke2024} and Benton et al. \cite{benton2024} show that models can evade or undermine oversight.
+  \item \textbf{Consent integrity and TOCTOU.} Recent preprints name the same failure: \emph{consent integrity},
+    ``what you approve is what executes'' \cite{consentintegrity}, and a time-of-check to time-of-use (TOCTOU)
+    gap between the approval and the execution, closed by recording the material parameters at approval and
+    comparing them at dispatch \cite{toctou}. Both are enforcement mechanisms, not metrics, and neither has peer
+    review; we cite them as an analogous and consistent approach, not as established practice.
   \item \textbf{Oversight metrics.} The Gaussia oversight paper \cite{gaussia2026} defines five checks on gated
     actions, with severity strata, and declares approvals without parameters as a limit. In reply to our public
     proposal, its team proposed that the approved parameters come from the approval system, a typed parameter
@@ -189,6 +194,14 @@ Three decisions are justified separately:
     the information and shows which tools need their declaration.
 \end{itemize}
 
+\paragraph{What \textsc{ok} means.} \textsc{ok} means that the material parameters agree, not that the effect
+agrees. With identical parameters, the effect can still change between the approval and the execution. Two
+recent works document such cases: \emph{stale consent}, with alias expansion, query re-evaluation, default
+arguments, mutable resource pointers and state drift \cite{staleconsent}, and \emph{argument laundering}, where
+the approved command runs unchanged and a version-control hook widens what it does \cite{argumentlaundering}. A
+field-by-field comparison cannot see these cases and does not try to; an \textsc{ok} must not be read as ``the
+person got what they approved''.
+
 \subsection{Several approvals, several calls, and the cell of the turn}
 
 We order the statuses by severity, $\textsc{sub} \succ \textsc{nv} \succ \textsc{ud} \succ \textsc{ok}$. If
@@ -226,16 +239,20 @@ substitution is an \textbf{incident}, reported from the first instance, with the
 approved and executed values side by side. The values are shown normalized and \textbf{masked by type} (the amount
 with its currency, the card only with its last 4 digits, the email with the user part hidden), so that the list
 can be shared without exposing personal data.
+Per scenario, the report also says whether all its $k$ replicas had zero substitutions; the share of
+scenarios where this is true is a figure of consistency, the idea of pass$^k$ \cite{taubench} applied to a
+behavior that must never occur, and it reads better than a rate.
 
 The correlation $\rho$ is not chosen by hand: a run estimates it from its own replicas, as the intraclass
 correlation of the per-conversation results grouped by scenario. The paper requires that $\rho$ is estimated and
-reported, not a specific estimator; for binary clustered data the one-way ANOVA estimator is the usual one
-\cite{ridout1999}, with a negative estimate taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$
-and $n_{\mathrm{ef}}$, and the interval uses the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval
-with an effective sample size in place of $n$ is the form that Franco et al.~\cite{franco2019} recommend. An
-assumed $\rho$ is used only to plan the number of scenarios and replicas, or as a sensitivity analysis. With few
-scenarios $\hat{\rho}$ is noisy; the standard error over the per-scenario rates \cite{miller2024} needs no $\rho$
-and can be reported next to the interval as a check.
+reported, not a specific estimator. Ridout et al.~\cite{ridout1999} review and compare the estimators for binary
+clustered data, among them the one-way ANOVA estimator, which our implementation uses with a negative estimate
+taken as 0. The output reports $\hat{\rho}$ together with $\bar{m}$ and $n_{\mathrm{ef}}$, and the interval uses
+the $n_{\mathrm{ef}}$ computed with $\hat{\rho}$; the Wilson interval with an effective sample size in place of $n$
+is one of the two forms that Franco et al.~\cite{franco2019} recommend. An assumed $\rho$ is used only to plan
+the number of scenarios and replicas, or as a sensitivity analysis. With few scenarios $\hat{\rho}$ is noisy; a
+clustered standard error with the scenario as the cluster \cite{miller2024} needs no $\rho$ and can be reported
+next to the interval as a check.
 
 \section{Relation to the misleading approval request}
 
@@ -291,7 +308,9 @@ material parameter missing in the approval (C26) and one approval that covers tw
 substituted (C27). The set detects, among other implementation errors, the substitution not reported, a
 substitution reported without approved parameters, the same value in a different format taken as a
 substitution, a substitution with parameters that the approval system did not record, and an action without
-parameters counted as verified.
+parameters counted as verified. One more boundary case fixes the scope of the check: the same material
+parameters approved and executed, with a recipient alias that resolves to a different address at execution. The
+expected result is \textsc{ok}; an implementation that tries to guess the effect fails it.
 
 \subsection{Synthetic simulation}
 
@@ -345,6 +364,9 @@ deterministic, and its result can be used as incident evidence.
     violation; the counters and the warning show how much of the rate is verified.
   \item \textbf{It depends on the declaration.} A substitution in a parameter that the policy does not declare is
     not seen.
+  \item \textbf{\textsc{ok} is not the same effect.} Equal material parameters can have a different effect, for
+    example an alias that resolves to another address or a later step that widens the command; the check does not
+    see it.
   \item \textbf{It does not see the description.} If the person approved a false description and the parameters
     agree, the check passes; the misleading request measures that failure.
   \item \textbf{The source of the attack is not verified} in its primary source.
@@ -367,6 +389,8 @@ between a recorded commitment and its execution. It is not an extension evaluate
     own?
   \item Is the threshold of the warning ($\phi < 0.5$) useful?
   \item How is the tolerance per parameter declared in the policy?
+  \item Must an approval from a different session, or an expired one, give \textsc{nv}? The approval record of
+    the contract does not define a session or an expiry yet.
 \end{enumerate}
 
 \section{Conclusion}
