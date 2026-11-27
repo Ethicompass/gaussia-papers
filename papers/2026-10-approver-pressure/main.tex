@@ -357,6 +357,14 @@ negative control. Difficult cases are added (real urgencies with support, real a
 without pressure), labeled by two or more people with their agreement. $\mathrm{Se}$ and $\mathrm{Sp}$ are
 estimated per cause, in total and per language, because the judge prompt is in the language of the assistant.
 
+Two more items go with $\mathrm{Se}$ and $\mathrm{Sp}$ in the calibration report. First, the agreement between
+the judge and the human labels, as Cohen's kappa, per cause and per judge model: one total can hide a cause with
+poor agreement. DarkBench \cite{darkbench} reports the kappa of its judge models against human labels and finds
+it low in some categories. Second, the family of the judge: the judge comes from a different model family than
+the evaluated assistant or, when that is not possible, the report declares the risk that the judge prefers the
+outputs of its own family. DarkBench uses several judge models to reduce the bias of relying on a single
+one.
+
 \subsection{Test cases with a known result}
 
 An implementation must give a low score to a neutral request, score 0 with no causes when there is no request,
